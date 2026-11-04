@@ -1,0 +1,311 @@
+/* 心灵之窗 · 休息窗口（全屏、暗色、低刺激：慢速大过渡、无闪烁） */
+:root {
+  --r-bg: #0b0f16;
+  --r-ink: #e6ecf5;
+  --r-dim: #7f8b9e;
+  --r-blue: #5b8def;
+  --r-teal: #43b3a0;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  background: radial-gradient(120% 90% at 50% 0%, #101826 0%, var(--r-bg) 60%);
+  color: var(--r-ink);
+  font: 14px/1.7 -apple-system, 'PingFang SC', 'Helvetica Neue', 'Microsoft YaHei', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  cursor: default;
+}
+
+#app {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 26px;
+  padding: 48px;
+  text-align: center;
+}
+
+.rest-head {
+  position: absolute;
+  top: 42px;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.rest-kind {
+  font-size: 13px;
+  letter-spacing: 4px;
+  color: var(--r-dim);
+}
+
+.rest-countdown {
+  font-size: 84px;
+  font-weight: 200;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 4px;
+  line-height: 1.1;
+  transition: opacity 0.6s;
+}
+
+/* ---- 训练舞台 ---- */
+.stage {
+  position: relative;
+  width: min(860px, 78vw);
+  height: min(430px, 44vh);
+}
+
+.stage-orb {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 120px;
+  height: 120px;
+  margin: -60px 0 0 -60px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 34%, rgba(150, 195, 255, 0.95), rgba(91, 141, 239, 0.55) 46%, rgba(91, 141, 239, 0) 74%);
+  filter: blur(0.4px);
+  opacity: 0.9;
+  transition: width 1.6s cubic-bezier(0.4, 0, 0.2, 1), height 1.6s cubic-bezier(0.4, 0, 0.2, 1),
+    margin 1.6s cubic-bezier(0.4, 0, 0.2, 1), transform 1.6s linear, opacity 1.2s;
+  will-change: width, height, margin, transform, opacity;
+}
+
+.stage-label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -8px;
+  font-size: 17px;
+  color: var(--r-ink);
+  letter-spacing: 1px;
+  transition: opacity 0.8s;
+}
+
+.phase-dots {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -34px;
+  display: flex;
+  justify-content: center;
+  gap: 9px;
+}
+
+.phase-dots i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #2a3342;
+  transition: background-color 0.6s, transform 0.6s;
+}
+
+.phase-dots i.done {
+  background: var(--r-teal);
+}
+
+.phase-dots i.current {
+  background: var(--r-blue);
+  transform: scale(1.35);
+}
+
+/* ---- 休息页脚 ---- */
+.rest-foot {
+  position: absolute;
+  bottom: 40px;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.training-pick {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.pick-btn {
+  background: rgba(26, 32, 41, 0.85);
+  border: 1px solid #2a3342;
+  color: var(--r-dim);
+  border-radius: 999px;
+  padding: 8px 18px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: color 0.4s, border-color 0.4s;
+}
+
+.pick-btn:hover {
+  color: var(--r-ink);
+  border-color: var(--r-dim);
+}
+
+.pick-btn.active {
+  color: var(--r-ink);
+  border-color: var(--r-blue);
+}
+
+/* ---- 背景声（雨声/溪流） ---- */
+.ambient-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.ambient-label {
+  font-size: 12px;
+  color: var(--r-dim);
+  letter-spacing: 2px;
+}
+
+.ambient-bar .pick-btn {
+  padding: 6px 15px;
+  font-size: 12.5px;
+}
+
+#ambient-volume {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 130px;
+  height: 3px;
+  border-radius: 999px;
+  background: #2a3342;
+  outline: none;
+  cursor: pointer;
+}
+
+#ambient-volume::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--r-blue);
+  border: none;
+  transition: transform 0.3s;
+}
+
+#ambient-volume::-webkit-slider-thumb:hover {
+  transform: scale(1.25);
+}
+
+.end-rest-btn {
+  background: none;
+  border: 1px solid #2a3342;
+  color: var(--r-dim);
+  border-radius: 999px;
+  padding: 8px 26px;
+  font-size: 13.5px;
+  cursor: pointer;
+  transition: color 0.4s, border-color 0.4s;
+}
+
+.end-rest-btn:hover {
+  color: var(--r-ink);
+  border-color: var(--r-dim);
+}
+
+/* 非严格模式的「跳过本次休息」：更低调，不与结束按钮争视觉权重 */
+.skip-rest-btn {
+  background: none;
+  border: none;
+  color: #5d6878;
+  font-size: 12.5px;
+  cursor: pointer;
+  padding: 4px 12px;
+  border-radius: 6px;
+  transition: color 0.4s;
+}
+
+.skip-rest-btn:hover {
+  color: var(--r-dim);
+}
+
+.strict-note {
+  font-size: 12.5px;
+  color: var(--r-dim);
+  letter-spacing: 1px;
+}
+
+.disclaimer {
+  font-size: 11.5px;
+  color: #5d6878;
+  max-width: 560px;
+}
+
+/* ---- 副屏镜像（无交互简洁版） ---- */
+.mirror-body #app {
+  padding: 0;
+}
+
+.mirror-wrap {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  text-align: center;
+}
+
+.mirror-kind {
+  font-size: 15px;
+  letter-spacing: 6px;
+  color: var(--r-dim);
+}
+
+.mirror-countdown {
+  font-size: 120px;
+  font-weight: 200;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 6px;
+  line-height: 1.1;
+}
+
+.mirror-tip {
+  font-size: 15px;
+  color: var(--r-ink);
+  letter-spacing: 2px;
+}
+
+.fade-in {
+  animation: restFade 1.2s ease both;
+}
+
+@keyframes restFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage-orb {
+    transition: opacity 0.6s;
+  }
+}

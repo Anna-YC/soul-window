@@ -1,0 +1,97 @@
+/* 桌面小时钟：半透明胶囊卡片，极简（低内存开销，无阴影无模糊）。
+   与主界面共用 bundle（#widget 窗口），样式限定在 .widget-body 下避免相互干扰 */
+.widget-body {
+  background: transparent;
+  overflow: hidden;
+  font: 13px/1 -apple-system, 'PingFang SC', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+.widget-body #app {
+  height: 100vh;
+  padding: 0; /* 覆盖主界面 #app 的内边距 */
+  min-height: auto;
+}
+
+#widget-card {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: rgba(16, 20, 28, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  -webkit-app-region: drag; /* 整卡可拖动 */
+}
+
+.status {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.status-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #8e959e;
+  flex: none;
+  transition: background-color 0.8s;
+}
+
+.dot.working {
+  background: #34a46c;
+}
+
+.dot.reminding {
+  background: #d9a23c;
+}
+
+.dot.resting {
+  background: #5b8def;
+}
+
+.state-text {
+  color: #8b95a5;
+  font-size: 11px;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.clock {
+  color: #e8edf4;
+  font-size: 21px;
+  font-weight: 350;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.open-btn {
+  -webkit-app-region: no-drag;
+  appearance: none;
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #8b95a5;
+  border-radius: 8px;
+  padding: 6px 9px;
+  font-size: 11px;
+  cursor: pointer;
+  flex: none;
+  transition: color 0.35s, border-color 0.35s;
+}
+
+.open-btn:hover {
+  color: #e8edf4;
+  border-color: rgba(255, 255, 255, 0.35);
+}

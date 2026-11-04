@@ -1,0 +1,28 @@
+# electron-builder 配置：macOS .app（dir 产物，免签名，本机使用）
+appId: cn.dengshan.soul-window
+productName: 心灵之窗护眼助手
+copyright: Copyright © 2026
+directories:
+  output: release
+  buildResources: build
+files:
+  # 运行时零 npm 依赖，只带构建产物
+  - dist/**/*
+  - dist-electron/**/*
+  - package.json
+asar: true
+# 托盘图标必须放在 asar 外（nativeImage.createFromPath 不支持 asar 内路径）
+extraResources:
+  - from: assets
+    to: assets
+mac:
+  category: public.app-category.healthcare-fitness
+  target:
+    - target: dir
+      arch: [arm64]
+  icon: build/icon.png
+  # 本机自用免签名；分发需配证书
+  identity: null
+electronDownload:
+  # 与 .npmrc 一致走国内镜像（二进制已缓存则直接复用）
+  mirror: https://npmmirror.com/mirrors/electron/

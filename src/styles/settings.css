@@ -1,0 +1,170 @@
+/* 设置面板（覆盖层） */
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 11, 16, 0.72);
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-end;
+  z-index: 40;
+  animation: fade 0.5s ease;
+}
+
+.settings-panel {
+  width: min(400px, 100%);
+  height: 100%;
+  overflow-y: auto;
+  background: var(--card);
+  border-left: 1px solid var(--line);
+  padding: 20px 22px 30px;
+  animation: slide 0.45s ease;
+}
+
+.settings-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.settings-head h2 {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.settings-section {
+  margin-bottom: 22px;
+}
+
+.settings-section > h3 {
+  font-size: 12px;
+  color: var(--dim);
+  letter-spacing: 1.5px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 6px;
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+}
+
+.field > label {
+  font-size: 13.5px;
+}
+
+.field .hint {
+  display: block;
+  font-size: 11px;
+  color: var(--dim);
+  margin-top: 2px;
+}
+
+.field input[type='number'] {
+  width: 86px;
+  background: var(--card-2);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 14px;
+  text-align: center;
+}
+
+.field select {
+  background: var(--card-2);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 13px;
+  max-width: 180px;
+}
+
+/* 开关 */
+.switch {
+  position: relative;
+  width: 42px;
+  height: 24px;
+  flex: none;
+}
+
+.switch input {
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  cursor: pointer;
+  z-index: 2;
+  margin: 0;
+}
+
+.switch i {
+  position: absolute;
+  inset: 0;
+  background: var(--card-2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  transition: background-color 0.35s, border-color 0.35s;
+}
+
+.switch i::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--dim);
+  transition: transform 0.35s, background-color 0.35s;
+}
+
+.switch input:checked + i {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.switch input:checked + i::after {
+  transform: translateX(18px);
+  background: var(--accent);
+}
+
+.save-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 26px;
+  transform: translateX(-50%);
+  background: var(--card-2);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font-size: 13px;
+  border-radius: 999px;
+  padding: 8px 18px;
+  animation: rise 0.4s ease;
+  z-index: 50;
+}
+
+@keyframes slide {
+  from {
+    transform: translateX(40px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
