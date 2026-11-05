@@ -150,9 +150,15 @@ function bootstrap(): void {
     broadcast();
     ensureRestWindowIntegrity(); // 唤醒后立即校验休息窗全屏状态
   });
+  // 息屏/唤醒时 display-metrics-changed 会连续触发（实测 130ms 一次，20+ 次），防抖合并
+  let displayChangeTimer: NodeJS.Timeout | undefined;
   screen.on('display-metrics-changed', () => {
-    logEvent('info', 'display-metrics-changed', { note: '显示器参数变化，校验休息窗' });
-    ensureRestWindowIntegrity();
+    if (displayChangeTimer) clearTimeout(displayChangeTimer);
+    displayChangeTimer = setTimeout(() => {
+      logEvent('info', 'display-metrics-changed', { note: '显示器参数变化，校验休息窗' });
+      ensureRestWindowIntegrity();
+      displayChangeTimer = undefined;
+    }, 500);
   });
   if (process.env.EYECARE_DEBUG) {
     machine.on((e) => console.log('[debug] event', JSON.stringify(e)));
