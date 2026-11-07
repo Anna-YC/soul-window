@@ -35,8 +35,9 @@ PLIST="$APP/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName 心灵之窗护眼助手" "$PLIST"
 /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier cn.dengshan.soul-window" "$PLIST"
 /usr/libexec/PlistBuddy -c "Set :CFBundleIconFile app.icns" "$PLIST"
-# 固定 bundle 版本，便于后续升级替换
-/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 0.2.2" "$PLIST"
+# 与 package.json 保持一致，避免手工 bump 时遗漏
+VERSION=$(node -p "require('./package.json').version")
+/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" "$PLIST"
 
 echo "✓ $APP"
 /usr/libexec/PlistBuddy -c "Print :CFBundleName" -c "Print :CFBundleIdentifier" -c "Print :CFBundleIconFile" "$PLIST"

@@ -13,6 +13,7 @@ import {
 import { join } from 'node:path';
 import { TimerMachine } from '../src/features/timer/machine';
 import type { TimerAction, TimerConfig, TimerEvent } from '../src/features/timer/types';
+import { nextAutoRotationIndex } from '../src/features/training/plans';
 import { IPC, sanitizeSettings, type AppSnapshot, type UserSettings } from '../src/shared/settings';
 import { logEvent } from './logger';
 import { TrayController } from './tray';
@@ -25,6 +26,7 @@ let widgetWindow: BrowserWindow | null = null;
 let tray: TrayController | null = null;
 let isQuitting = false;
 let tickCount = 0;
+let restRotationIndex = 0; // auto 训练轮换由主进程持有，跨休息窗口生效
 let settings: UserSettings = loadSettings();
 
 /** 开发/验收用短时长：EYECARE_DEV_TIMES="提醒秒,强制秒,休息秒"，生产默认 30/40/5 分钟 */
@@ -282,7 +284,7 @@ function rendererUrl(page: 'index.html' | 'rest.html' | 'rest.html#mirror' | 'in
 }
 
 function createMainWindow(): void {
-  mainWindow = new BrowserWindow({
+  const win = new BrowserWindow({
     width: 460,
     height: 720,
     minWidth: 400,
@@ -298,49 +300,51 @@ function createMainWindow(): void {
       sandbox: false, // preload 需 require 相对路径的共享模块；页面仍与 preload 隔离
     },
   });
+  mainWindow = win;
   logEvent('info', 'main-window-created');
-  mainWindow.once('ready-to-show', () => {
-    mainWindow?.show();
+  win.once('ready-to-show', () => {
+    if (mainWindow !== win || win.isDestroyed()) return;
+    win.show();
     logEvent('info', 'main-window-shown', { note: 'ready-to-show' });
     updateWidgetVisibility();
   });
-  mainWindow.on('close', (e) => {
+  win.on('close', (e) => {
     if (isQuitting) return;
     e.preventDefault(); // 常驻后台：关窗 = 隐藏到托盘，计时继续
-    mainWindow?.hide();
+    win.hide();
     logEvent('info', 'main-window-hidden', { note: '用户关窗→驻留托盘，计时继续' });
     updateWidgetVisibility();
   });
-  mainWindow.on('minimize', () => {
+  win.on('minimize', () => {
     logEvent('info', 'main-window-minimized');
     updateWidgetVisibility();
   });
-  mainWindow.on('restore', () => {
+  win.on('restore', () => {
     logEvent('info', 'main-window-restored');
     updateWidgetVisibility();
   });
-  mainWindow.on('closed', () => {
-    mainWindow = null;
+  win.on('closed', () => {
+    // 崩溃重建后，旧窗口的 closed 不得清空新窗口引用
+    if (mainWindow === win) mainWindow = null;
     logEvent('info', 'main-window-closed');
   });
-  mainWindow.webContents.on('render-process-gone', (_e, details) => {
+  win.webContents.on('render-process-gone', (_e, details) => {
     logEvent('error', 'main-render-process-gone', { ...details, action: '自动重建主窗口' });
-    if (isQuitting) return;
-    const dead = mainWindow;
+    if (isQuitting || mainWindow !== win) return;
     mainWindow = null;
     try {
-      dead?.destroy();
+      win.destroy();
     } catch {
       /* 已销毁 */
     }
     createMainWindow();
     updateWidgetVisibility();
   });
-  mainWindow.webContents.on('console-message', (e) => {
+  win.webContents.on('console-message', (e) => {
     if (isErrorLevel(e.level)) logEvent('warn', 'main-console', { message: e.message });
   });
-  void mainWindow.loadURL(rendererUrl('index.html'));
-  sendSnapshotWhenReady(mainWindow);
+  void win.loadURL(rendererUrl('index.html'));
+  sendSnapshotWhenReady(win);
 }
 
 function ensureRestWindow(): void {
@@ -491,7 +495,14 @@ function showMainWindow(): void {
 
 function openSettings(): void {
   showMainWindow();
-  mainWindow?.webContents.send(IPC.openSettings);
+  const win = mainWindow;
+  if (!win || win.isDestroyed()) return;
+  const send = () => {
+    if (!win.isDestroyed()) win.webContents.send(IPC.openSettings);
+  };
+  // 新建/重建窗口时，渲染监听器要等页面加载完成后才注册
+  if (win.webContents.isLoading()) win.webContents.once('did-finish-load', send);
+  else send();
 }
 
 // ---- 事件 → 桌面行为 ----
@@ -516,6 +527,7 @@ function handleTimerEvent(e: TimerEvent): void {
       }
       break;
     case 'rest-complete':
+      restRotationIndex = nextAutoRotationIndex(restRotationIndex);
       closeRestWindow();
       // 休息可能从托盘发起（主窗口已隐藏）；结束时必须带回可见窗口，
       // 否则应用「看起来闪退」：进程在跑但没有任何窗口（2026-11-03 李先生反馈）
@@ -523,6 +535,7 @@ function handleTimerEvent(e: TimerEvent): void {
       notify('休息完成', '眼睛谢谢你。新的一轮工作开始，到时间我会再提醒你。');
       break;
     case 'rest-end-early':
+      restRotationIndex = nextAutoRotationIndex(restRotationIndex);
       closeRestWindow();
       showMainWindow();
       break;
@@ -550,7 +563,7 @@ function notify(title: string, body: string): void {
 
 // ---- 广播与 IPC ----
 function snapshot(): AppSnapshot {
-  return { timer: machine.snapshot(), settings };
+  return { timer: machine.snapshot(), settings, restRotationIndex };
 }
 
 function broadcast(): void {
@@ -566,8 +579,10 @@ function registerIpc(): void {
   ipcMain.handle(IPC.getSettings, () => settings);
   ipcMain.handle(IPC.saveSettings, (_e, patch: Partial<UserSettings>) => {
     const before = { ...settings };
-    settings = sanitizeSettings({ ...settings, ...patch });
-    saveSettings(settings);
+    const next = sanitizeSettings({ ...settings, ...patch });
+    // 先持久化成功再热应用；写盘失败会拒绝 IPC，由设置面板提示“保存失败”
+    saveSettings(next);
+    settings = next;
     machine.updateConfig(timerConfig(settings));
     app.setLoginItemSettings({ openAtLogin: settings.launchAtLogin });
     const changed: Record<string, { from: unknown; to: unknown }> = {};

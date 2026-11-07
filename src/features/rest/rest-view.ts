@@ -15,7 +15,7 @@ export function mountRestApp(root: HTMLElement): void {
         <div class="rest-countdown" id="rest-countdown">--:--</div>
       </div>
 
-      <div class="stage" id="stage"></div>
+      <div class="stage" id="stage"><div class="stage-label"></div></div>
 
       <div class="rest-foot">
         <div class="training-pick" id="training-pick" hidden>
@@ -58,7 +58,6 @@ export function mountRestApp(root: HTMLElement): void {
   let latest: AppSnapshot | null = null;
   let stage: TrainingStage | null = null;
   let lastRestRoundKey = ''; // 区分「新一轮休息」：state+开始时间戳
-  let autoRotation = Number(sessionStorage.getItem('rest-rotation') ?? '0');
 
   const ambient = new AmbientSound(refs.ambientBar);
   let ambientPrefs: AmbientPrefs = loadAmbientPrefs();
@@ -82,7 +81,7 @@ export function mountRestApp(root: HTMLElement): void {
         phases: [{ kind: 'observe', label: '寻找远点 · 放松地看着它漂移', durationSeconds: Math.min(60, Math.max(30, restSeconds - 10)) }],
       };
     } else {
-      plan = buildRestActivities(mode, restSeconds, autoRotation);
+      plan = buildRestActivities(mode, restSeconds, snap.restRotationIndex);
     }
     for (const btn of refs.pick.querySelectorAll<HTMLElement>('.pick-btn')) {
       btn.classList.toggle('active', btn.dataset.mode === mode);
@@ -155,10 +154,6 @@ export function mountRestApp(root: HTMLElement): void {
       // 按设置自动开始训练
       if (snap.settings.autoTraining) {
         startTraining(snap.settings.trainingMode);
-        if (snap.settings.trainingMode === 'auto') {
-          autoRotation += 1;
-          sessionStorage.setItem('rest-rotation', String(autoRotation));
-        }
         refs.pick.hidden = false; // 自动训练也可手动换
       } else {
         refs.pick.hidden = false;

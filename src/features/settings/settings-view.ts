@@ -98,25 +98,52 @@ export function mountSettingsPanel(root: HTMLElement, hooks: SettingsPanelHooks)
   root.appendChild(overlay);
 
   let toastTimer: number | undefined;
+  let toast: HTMLDivElement | null = null;
+  let saveSequence = 0;
 
-  const save = (patch: Partial<UserSettings>) => {
-    void hooks.saveSettings(patch).then(() => {
-      const toast = document.createElement('div');
-      toast.className = 'save-toast';
-      toast.textContent = '已保存';
-      root.appendChild(toast);
-      window.clearTimeout(toastTimer);
-      toastTimer = window.setTimeout(() => toast.remove(), 1400);
-    });
-  };
-
-  // 载入当前值
-  void hooks.getSettings().then((s) => {
+  const syncControls = (s: UserSettings) => {
     for (const el of overlay.querySelectorAll<HTMLInputElement | HTMLSelectElement>('[data-key]')) {
       const key = el.dataset.key as keyof UserSettings;
       if (el instanceof HTMLInputElement && el.type === 'checkbox') el.checked = Boolean(s[key]);
       else el.value = String(s[key]);
     }
+  };
+
+  const showToast = (text: string) => {
+    if (!overlay.isConnected) return;
+    if (!toast || !toast.isConnected) {
+      toast = document.createElement('div');
+      toast.className = 'save-toast';
+      root.appendChild(toast);
+    }
+    toast.textContent = text;
+    window.clearTimeout(toastTimer);
+    toastTimer = window.setTimeout(() => {
+      toast?.remove();
+      toast = null;
+    }, 1400);
+  };
+
+  const save = (patch: Partial<UserSettings>) => {
+    const sequence = ++saveSequence;
+    void hooks
+      .saveSettings(patch)
+      .then((saved) => {
+        // 旧响应不覆盖用户后续编辑；主进程返回的规范化值才是真实生效值
+        if (sequence !== saveSequence) return;
+        syncControls(saved);
+        showToast('已保存');
+      })
+      .catch((error: unknown) => {
+        if (sequence !== saveSequence) return;
+        console.error('[settings] 保存失败', error);
+        showToast('保存失败，请重试');
+      });
+  };
+
+  // 载入当前值
+  void hooks.getSettings().then((s) => {
+    if (overlay.isConnected) syncControls(s);
   });
 
   // 即时保存
@@ -127,7 +154,10 @@ export function mountSettingsPanel(root: HTMLElement, hooks: SettingsPanelHooks)
     if (target instanceof HTMLInputElement && target.type === 'checkbox') {
       save({ [key]: target.checked } as Partial<UserSettings>);
     } else if (target instanceof HTMLInputElement && target.type === 'number') {
-      save({ [key]: Number(target.value) || undefined } as Partial<UserSettings>);
+      // 清空、0 或其他非法值不提交，保留上次有效设置；绝不让 NaN 进入状态机
+      const value = target.valueAsNumber;
+      if (!Number.isFinite(value)) return;
+      save({ [key]: value } as Partial<UserSettings>);
     } else if (target instanceof HTMLSelectElement) {
       save({ [key]: target.value } as Partial<UserSettings>);
     }

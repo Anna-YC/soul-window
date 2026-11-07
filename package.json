@@ -1,7 +1,7 @@
 {
   "name": "soul-window-eye-care",
   "productName": "心灵之窗护眼助手",
-  "version": "0.2.2",
+  "version": "0.2.6",
   "description": "常驻桌面护眼提醒：连续工作 30 分钟提醒休息，40 分钟进入 5 分钟强制休息",
   "private": true,
   "main": "dist-electron/electron/main.js",
@@ -13,7 +13,8 @@
     "dev:renderer": "vite",
     "dev": "concurrently -k -n renderer,electron -c cyan,green \"vite\" \"npm run build:electron && wait-on tcp:127.0.0.1:5173 && VITE_DEV_SERVER_URL=http://127.0.0.1:5173 electron .\"",
     "test": "vitest run",
-    "dist": "electron-builder --mac dir",
+    "predist": "npm run build",
+    "dist": "electron-builder --mac dir && ./scripts/finalize-app.sh",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.electron.json --noEmit"
   },
   "devDependencies": {

@@ -15,7 +15,7 @@ export function loadAmbientPrefs(): AmbientPrefs {
     if (!raw) return { kind: 'off', volume: 0.5 };
     const p = JSON.parse(raw) as Partial<AmbientPrefs>;
     const kind = p.kind === 'rain' || p.kind === 'stream' ? p.kind : 'off';
-    const volume = typeof p.volume === 'number' ? Math.min(1, Math.max(0, p.volume)) : 0.5;
+    const volume = typeof p.volume === 'number' && Number.isFinite(p.volume) ? Math.min(1, Math.max(0, p.volume)) : 0.5;
     return { kind, volume };
   } catch {
     return { kind: 'off', volume: 0.5 };
@@ -32,10 +32,13 @@ export function saveAmbientPrefs(prefs: AmbientPrefs): void {
 
 export class AmbientSound {
   private ctx: AudioContext | null = null;
+  /** 当前音源链的独立 master；stop 后立刻置空，下次 start 必建新链 */
   private master: GainNode | null = null;
   private nodes: AudioNode[] = [];
   private kind: AmbientKind | 'off' = 'off';
   private volume = 0.5;
+  /** 每次 start/stop 都递增，使 await resume() 之后的过期启动失效 */
+  private generation = 0;
   /** 状态暴露给验收脚本（data 驱动的 UI 已够人读，这里给程序读） */
   readonly stateEl: HTMLElement;
 
@@ -48,22 +51,30 @@ export class AmbientSound {
     return this.kind;
   }
 
-  /** 开启/切换音源；渐入防爆音 */
+  /** 开启/切换音源；渐入防爆音。每次启动都有独立 master 和 generation。 */
   async start(kind: AmbientKind, volume = this.volume): Promise<void> {
-    this.stopImmediate();
+    this.stop(); // 停掉旧链，并令所有尚未完成的旧 start 失效
+    const generation = ++this.generation;
     this.kind = kind;
     this.volume = volume;
     const ctx = this.ensureContext();
     const master = this.master!;
-    await ctx.resume();
+
+    try {
+      await ctx.resume();
+    } catch (err) {
+      console.warn('[ambient] AudioContext 恢复失败', err);
+      if (generation === this.generation) this.stop();
+      return;
+    }
+
+    // resume 期间用户可能已静音或切换；过期启动不得再创建节点/发声
+    if (generation !== this.generation || this.kind !== kind || this.master !== master) return;
 
     const noise = this.noiseSource();
-    const filter =
-      kind === 'rain'
-        ? ctx.createBiquadFilter() // 雨声：低通后的沙沙声
-        : ctx.createBiquadFilter();
+    const filter = ctx.createBiquadFilter();
     if (kind === 'rain') {
-      filter.type = 'lowpass';
+      filter.type = 'lowpass'; // 雨声：低通后的沙沙声
       filter.frequency.value = 1100;
       filter.Q.value = 0.6;
     } else {
@@ -93,22 +104,23 @@ export class AmbientSound {
     this.stateEl.dataset.playing = kind;
   }
 
-  /** 停止（1.5 秒渐出后释放） */
+  /** 停止（1.5 秒渐出后释放）；旧 master 与节点由本次定时器独立清理 */
   stop(): void {
-    if (!this.ctx || !this.master || this.kind === 'off') {
-      this.kind = 'off';
-      this.stateEl.dataset.playing = 'off';
-      return;
-    }
+    this.generation += 1; // 同时使等待 resume() 的 start 失效
+    this.kind = 'off';
+    this.stateEl.dataset.playing = 'off';
+
     const ctx = this.ctx;
     const master = this.master;
+    const nodes = this.nodes;
+    // 先脱离当前状态：下次 start 会创建全新 master，不受旧清理定时器影响
+    this.master = null;
+    this.nodes = [];
+    if (!ctx || !master) return;
+
     master.gain.cancelScheduledValues(ctx.currentTime);
     master.gain.setValueAtTime(Math.max(0.0001, master.gain.value), ctx.currentTime);
     master.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.5);
-    this.kind = 'off';
-    this.stateEl.dataset.playing = 'off';
-    const nodes = this.nodes;
-    this.nodes = [];
     window.setTimeout(() => {
       for (const n of nodes) {
         try {
@@ -122,7 +134,7 @@ export class AmbientSound {
           /* 已断开 */
         }
       }
-      void master.disconnect();
+      master.disconnect();
     }, 1600);
   }
 
@@ -138,7 +150,7 @@ export class AmbientSound {
   /** 呼吸引导的轻拍点音：吸气高一点、呼气低一点。独立通道，不受白噪音音量/关闭影响 */
   ping(kind: 'breathe-in' | 'breathe-out'): void {
     const ctx = this.ensureContext();
-    void ctx.resume();
+    void ctx.resume().catch(() => undefined);
     const osc = ctx.createOscillator();
     osc.type = 'sine';
     osc.frequency.value = kind === 'breathe-in' ? 523.25 : 392.0; // C5 / G4
@@ -152,8 +164,8 @@ export class AmbientSound {
   }
 
   private ensureContext(): AudioContext {
-    if (!this.ctx) {
-      this.ctx = new AudioContext();
+    if (!this.ctx) this.ctx = new AudioContext();
+    if (!this.master) {
       this.master = this.ctx.createGain();
       this.master.gain.value = this.volume;
       this.master.connect(this.ctx.destination);
@@ -178,18 +190,5 @@ export class AmbientSound {
     src.loop = true;
     src.start();
     return src;
-  }
-
-  private stopImmediate(): void {
-    if (this.kind !== 'off') this.stop();
-    // stop() 已安排渐出；连开时直接断开旧链
-    for (const n of this.nodes) {
-      try {
-        n.disconnect();
-      } catch {
-        /* ignore */
-      }
-    }
-    this.nodes = [];
   }
 }

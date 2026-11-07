@@ -73,15 +73,14 @@ npm start            # 构建并启动（生产默认 30/40/5 分钟）
 
 ```bash
 npm run dev          # Vite 热更新 + Electron
-npm test             # 单元测试（32 项）
+npm test             # 单元测试（51 项，含设置/音频/持久化回归）
 npm run typecheck    # 类型检查
 ```
 
 ### 打包 .app
 
 ```bash
-npm run dist              # electron-builder 打包（产物在 release/mac-arm64/）
-./scripts/finalize-app.sh # 后处理：中文名/bundleId/icns
+npm run dist              # 一键：构建 → electron-builder → 中文名/bundleId/icns 后处理
 ```
 
 ### 验收用短时长模式

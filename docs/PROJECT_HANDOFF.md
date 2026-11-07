@@ -320,6 +320,34 @@ type TimerSnapshot = {
 
 当前不需要创建分支、提交或推送 Git，除非用户明确要求。无未提交变更（无 Git 仓库）。
 
+### 2026-11-07 代码审查 P1 修复（李先生批准「先修 P1」）
+
+- **设置 NaN 防线**：`settings-view.ts` 数字输入改用 `valueAsNumber + Number.isFinite`，无效输入不提交；`shared/settings.ts` 三个时长字段统一 `finiteOrDefault`，`undefined/null/NaN/Infinity/非数字` 回退默认配置后再取整钳制。避免严格模式下休息时长为 NaN 导致永不结束。
+- **背景声生命周期**：`ambient-sound.ts` 每次 `start` 创建独立 master，`stop` 立即把当前 master/节点引用置空并由旧定时器独立清理，解决停止后再开/切换时旧定时器断开新音源的问题；新增 generation 防止 `await AudioContext.resume()` 后过期启动发声，resume 失败回退 off；呼吸 ping 的 resume 也处理 rejection。顺带校验持久音量非有限数。
+- **新增测试**：`tests/settings.test.ts` 9 项（无效输入回退、有限值取整钳制、提醒/强制阈值关系）；`tests/ambient-sound.test.ts` 5 项（停止后重启、直接切换、resume 中静音、快速连续启动、resume 失败），使用 mock AudioContext + fake timers。
+- **验证**：`npm test` **46/46 通过**；`npm run typecheck` 通过；`npm run build` 通过。
+- **打包与真机验证（2026-11-07）**：已打包 **v0.2.5** 并装入 `/Applications/心灵之窗护眼助手.app`（旧版备份在 `/tmp/心灵之窗护眼助手-pre-0.2.5.app`）。对打包产物实测 **10/10 通过**：清空休息时长保持 5→5、NaN 回退 5、Infinity 回退有限默认值、倒计时有限、雨声 master 连接输出、静音后旧链断开、停止后重开新链可用、雨声切溪流后旧链断开而新链保持连接、UI 与实际音源一致。报告：`shots/p1-real-verification.json`。验证后恢复用户设置与背景声偏好，并以生产默认 30/40/5 分钟配置重新启动。
+- **发布元数据**：`scripts/finalize-app.sh` 的 `CFBundleShortVersionString` 改为从 `package.json` 动态读取，避免版本号手工不同步。
+- **范围控制**：本次只修审查中的 P1 两项；P2/P3（自动轮换、设置返回值同步、写盘失败提示、窗口竞态等）尚未处理。`package-lock.json` 的既有本地修改保持不动。
+
+### 2026-11-07 代码审查 P2 修复与真机验收（李先生「继续 P2」，v0.2.6）
+
+本次处理审查列出的 9 项 P2，未扩展到 P3：
+
+1. **autoTraining=false 初始化**：rest 初始 DOM 预置 `.stage-label`，关闭自动训练不再空引用，背景声栏正常显示。
+2. **auto 轮换跨休息生效**：`AppSnapshot.restRotationIndex` 由主进程持有，每次休息结束 `nextAutoRotationIndex` 推进；不再依赖随窗口销毁的 sessionStorage。
+3. **训练计划总预算**：固定模式与 auto 均按 restSeconds 收敛，<90 秒不强加寻找远点；≥90 秒预留 45 秒游戏；呼吸允许 1 轮以适配短预算。新增 30/60/90/300 秒 × 全模式/全索引测试。
+4. **延后热关闭提醒**：`updateConfig` 立即退出 reminder30/extended 并清 snooze，advance 到期分支再查开关。
+5. **设置面板显示真实生效值**：保存响应用主进程返回的规范化设置刷新控件，序列号防止旧响应覆盖后续编辑；保存失败明确提示。
+6. **持久化失败不再假成功**：设置改临时文件 + rename 原子替换，写盘失败抛出；主进程先写盘成功再热应用；`tests/store.test.ts` 验证失败抛错且原文件不变。
+7. **开发托盘路径**：按 `app.isPackaged` 区分项目根目录与打包 Resources，避免开发时误用 Electron 自带 resourcesPath。
+8. **dist 可复现**：新增 `predist=npm run build`，`dist` 自动串接 `finalize-app.sh`，一键构建/打包/后处理。
+9. **窗口时序**：createMainWindow 使用局部 win，closed 仅在引用一致时清空，崩溃重建不被旧 closed 误清；openSettings 在加载中等待 did-finish-load。
+
+- **验证**：`npm test` **51/51 通过**；双 typecheck 通过；`npm run dist` 一键链实际跑通并产出 v0.2.6。
+- **真机验收**：对 `/Applications/心灵之窗护眼助手.app` 实测 **12/12 通过**：关闭自动训练初始化、两次休息真实轮换、延后关闭后不再提醒、设置联动显示真实值、崩溃后设置面板成功打开且无重复主窗口。报告 `shots/p2-real-verification.json`。验证后恢复用户设置并以生产默认 30/40/5 分钟启动。
+- P3 项（小时钟离屏、通知硬编码、日志体检等）仍未处理；代码尚未提交/推送。
+
 ## 11. 项目文档维护规则
 
 这是本项目的固定协作流程：
