@@ -1,7 +1,7 @@
 {
   "name": "soul-window-eye-care",
   "productName": "心灵之窗护眼助手",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "description": "常驻桌面护眼提醒：连续工作 30 分钟提醒休息，40 分钟进入 5 分钟强制休息",
   "private": true,
   "main": "dist-electron/electron/main.js",

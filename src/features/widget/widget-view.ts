@@ -41,6 +41,7 @@ export function mountWidget(root: HTMLElement): void {
       case 'extended':
         cls += ' reminding';
         label = t.state === 'reminder30' ? '该休息了' : '提醒已延后';
+        time = fmtClock(t.elapsedWorkSeconds); // 禁用强制休息时也显示连续工作时长，不留 --:--
         if (t.remainingToForcedRestSeconds !== null) {
           label += ' · 距强制休息';
           time = fmtClock(t.remainingToForcedRestSeconds);

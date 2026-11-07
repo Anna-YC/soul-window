@@ -73,7 +73,7 @@ npm start            # 构建并启动（生产默认 30/40/5 分钟）
 
 ```bash
 npm run dev          # Vite 热更新 + Electron
-npm test             # 单元测试（51 项，含设置/音频/持久化回归）
+npm test             # 单元测试（59 项，含设置/音频/持久化/位置与日志回归）
 npm run typecheck    # 类型检查
 ```
 

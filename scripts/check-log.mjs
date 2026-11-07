@@ -5,8 +5,10 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 
-const date = process.argv[2] ?? new Date().toISOString().slice(0, 10);
-const dir = join(homedir(), 'Library/Application Support/心灵之窗护眼助手/logs');
+const localDate = (d = new Date()) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const date = process.argv[2] ?? localDate(); // 日志按本地日期命名，不能用 UTC
+const dir = process.env.EYECARE_LOG_DIR ?? join(homedir(), 'Library/Application Support/心灵之窗护眼助手/logs');
 let content;
 try {
   content = readFileSync(join(dir, `app-${date}.log`), 'utf8');
@@ -66,10 +68,16 @@ const LEGAL = {
 const transitions = events.filter((e) => e.event === 'timer:state-change');
 const badTransitions = [];
 let lastState = 'idle';
-for (const t of transitions) {
-  const { from, to } = t.detail;
-  if (from !== lastState) badTransitions.push({ time: t.time, issue: `from(${from}) 与上一状态(${lastState}) 不连续`, line: t.lineNo });
-  if (!LEGAL[from]?.includes(to)) badTransitions.push({ time: t.time, issue: `非法转移 ${from}→${to}`, line: t.lineNo });
+for (const e of events) {
+  // 每次启动都是新状态机；不能把上一次进程结束时的状态带到本次
+  if (e.event === 'app-start') {
+    lastState = 'idle';
+    continue;
+  }
+  if (e.event !== 'timer:state-change') continue;
+  const { from, to } = e.detail;
+  if (from !== lastState) badTransitions.push({ time: e.time, issue: `from(${from}) 与上一状态(${lastState}) 不连续`, line: e.lineNo });
+  if (!LEGAL[from]?.includes(to)) badTransitions.push({ time: e.time, issue: `非法转移 ${from}→${to}`, line: e.lineNo });
   lastState = to;
 }
 console.log(`\n[状态转移] ${transitions.length} 次${badTransitions.length ? '，异常：' : '，全部合法 ✓'}`);
@@ -81,6 +89,10 @@ const restEnds = events.filter((e) => e.event === 'timer:rest-complete' || e.eve
 let unclosed = 0;
 let openIdx = null;
 for (const e of events) {
+  if (e.event === 'app-start' || e.event === 'app-quit') {
+    openIdx = null; // 休息配对只在同一进程内计算，正常退出不算未闭合
+    continue;
+  }
   if (e.event === 'timer:rest-start') {
     if (openIdx !== null) unclosed += 1; // 上一个没关就开新的是异常（理论上状态机不允许）
     openIdx = e.time;
@@ -109,7 +121,7 @@ if (heartbeats.length >= 2) {
   console.log(`\n[心跳] ${heartbeats.length} 条`);
   if (gaps.length) {
     for (const g of gaps) {
-      const explained = events.some((e) => e.event === 'power-suspend' && e.time >= g.from && e.time <= g.to);
+      const explained = events.some((e) => ['power-suspend', 'app-start', 'app-quit'].includes(e.event) && e.time >= g.from && e.time <= g.to);
       console.log(`  断档 ${g.from} → ${g.to}（${g.minutes} 分钟）${explained ? '（期间有睡眠记录，正常）' : '（无睡眠记录解释 ⚠）'}`);
     }
   } else {
@@ -128,6 +140,6 @@ for (const e of interesting.slice(0, 60)) {
 }
 if (interesting.length > 60) console.log(`  …另有 ${interesting.length - 60} 条`);
 
-const problems = errors.length + badTransitions.length + unclosed + (gaps.some((g) => !events.some((e) => e.event === 'power-suspend' && e.time >= g.from && e.time <= g.to)) ? 1 : 0);
+const problems = errors.length + badTransitions.length + unclosed + (gaps.some((g) => !events.some((e) => ['power-suspend', 'app-start', 'app-quit'].includes(e.event) && e.time >= g.from && e.time <= g.to)) ? 1 : 0);
 console.log(`\n===== 结论：${problems === 0 ? '日志时序正常 ✓' : `发现 ${problems} 类问题，见上 ⚠`} =====`);
 process.exit(problems === 0 ? 0 : 1);

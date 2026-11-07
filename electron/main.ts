@@ -17,6 +17,7 @@ import { nextAutoRotationIndex } from '../src/features/training/plans';
 import { IPC, sanitizeSettings, type AppSnapshot, type UserSettings } from '../src/shared/settings';
 import { logEvent } from './logger';
 import { TrayController } from './tray';
+import { resolveWidgetPosition } from './widget-position';
 import { loadSettings, loadStats, saveSettings, saveStats, loadWidgetPosition, saveWidgetPosition } from './store';
 
 // ---- 全局状态 ----
@@ -187,14 +188,17 @@ function bootstrap(): void {
 }
 
 // ---- 桌面小时钟（后台运行时的半透明倒计时；按需创建/销毁，主窗可见时进程不存在） ----
+function widgetDisplayAreas() {
+  const primary = screen.getPrimaryDisplay();
+  return [primary.workArea, ...screen.getAllDisplays().filter((d) => d.id !== primary.id).map((d) => d.workArea)];
+}
+
 function createWidgetWindow(): void {
   const W = 232;
   const H = 64;
-  // 默认贴主屏右上角；用户拖动后记忆位置
-  const primary = screen.getPrimaryDisplay().workArea;
-  const saved = loadWidgetPosition();
-  const x = saved?.x ?? primary.x + primary.width - W - 20;
-  const y = saved?.y ?? primary.y + 12;
+  // 默认贴主屏右上角；记忆位置必须仍在某块屏幕内，否则回退主屏
+  const displays = widgetDisplayAreas();
+  const { x, y } = resolveWidgetPosition(loadWidgetPosition(), displays, { width: W, height: H });
   widgetWindow = new BrowserWindow({
     width: W,
     height: H,
@@ -252,7 +256,15 @@ function updateWidgetVisibility(): void {
   const resting = st === 'forcedRest' || st === 'manualRest';
   const shouldShow = settings.showDesktopClock && !mainVisible && !resting;
   if (shouldShow) {
-    if (!widgetWindow || widgetWindow.isDestroyed()) createWidgetWindow();
+    if (!widgetWindow || widgetWindow.isDestroyed()) {
+      createWidgetWindow();
+    } else {
+      // 热插拔/分辨率变化后，已存在的小时钟也要拉回可见工作区
+      const [x, y] = widgetWindow.getPosition();
+      const [width, height] = widgetWindow.getSize();
+      const next = resolveWidgetPosition({ x, y }, widgetDisplayAreas(), { width, height });
+      if (next.x !== x || next.y !== y) widgetWindow.setPosition(next.x, next.y);
+    }
   } else {
     destroyWidgetWindow();
   }
@@ -523,7 +535,11 @@ function handleTimerEvent(e: TimerEvent): void {
       // 此时 getState() 仍是旧状态，不能靠 updateWidgetVisibility 判定——直接销毁退场
       destroyWidgetWindow();
       if (e.kind === 'forced') {
-        notify('强制休息开始', '连续工作已达 40 分钟。接下来 5 分钟，可以闭眼、看远处，或跟着引导放松。');
+        const cfg = timerConfig(settings);
+        notify(
+          '强制休息开始',
+          `连续工作已达 ${durationText(cfg.forcedAfterSeconds)}。接下来 ${durationText(cfg.restSeconds)}，可以闭眼、看远处，或跟着引导放松。`,
+        );
       }
       break;
     case 'rest-complete':
@@ -549,6 +565,11 @@ function handleTimerEvent(e: TimerEvent): void {
       break;
   }
   broadcast();
+}
+
+/** 通知文案使用实际生效配置；整分钟显示分钟，短时长验收显示秒 */
+function durationText(seconds: number): string {
+  return seconds % 60 === 0 ? `${seconds / 60} 分钟` : `${seconds} 秒`;
 }
 
 function notify(title: string, body: string): void {
