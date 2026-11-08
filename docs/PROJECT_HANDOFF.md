@@ -358,6 +358,12 @@ type TimerSnapshot = {
 - **验证**：`npm test` **59/59 通过**；双 typecheck、一键 dist 通过。v0.2.7 真机 **8/8 通过**：禁用强制休息提示、小时钟有效时间与标签、离屏自动回正、通知含 30 秒/8 秒且无 40 分钟/5 分钟、启动日志顺序。报告 `shots/p3-real-verification.json`。验证后恢复设置并回到生产默认配置。
 - P1/P2 已先在本地分支 `fix/code-review-p1-p2` 提交（4de51a6），P3 完成后统一推送；尚未推送远端。
 
+### 2026-11-08 README 增加关键界面截屏
+
+- 从既有验收截图精选 4 张，复制为稳定英文路径：`docs/images/main-working.png`、`reminder.png`、`forced-rest.png`、`multi-display-rest.png`。
+- README 在「这是什么」与「核心特性」之间新增「界面预览」：主窗口工作/统计、30 分钟提醒双栏，强制休息训练与多屏镜像大图，均有中文 alt 描述。
+- 图片均为项目实际运行截图，非示意图；README 相对路径可在 GitHub 直接渲染。
+
 ## 11. 项目文档维护规则
 
 这是本项目的固定协作流程：

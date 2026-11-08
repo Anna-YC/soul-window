@@ -18,6 +18,35 @@
 
 ---
 
+## 界面预览
+
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <strong>工作计时与今日统计</strong><br /><br />
+      <img src="docs/images/main-working.png" alt="主窗口显示连续工作时长、提醒与强制休息倒计时，以及今日统计" width="360" />
+    </td>
+    <td width="50%" align="center">
+      <strong>30 分钟休息提醒</strong><br /><br />
+      <img src="docs/images/reminder.png" alt="30 分钟提醒卡，支持开始休息、延后 5 分钟和继续工作" width="360" />
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center">
+      <strong>全屏强制休息与低刺激训练</strong><br /><br />
+      <img src="docs/images/forced-rest.png" alt="全屏强制休息界面，包含倒计时、护眼训练、呼吸引导和背景声控制" width="760" />
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center">
+      <strong>多显示器同步休息</strong><br /><br />
+      <img src="docs/images/multi-display-rest.png" alt="扩展屏上的休息镜像，显示大倒计时与闭眼休息提示" width="760" />
+    </td>
+  </tr>
+</table>
+
+---
+
 ## 核心特性
 
 ### 计时与提醒
