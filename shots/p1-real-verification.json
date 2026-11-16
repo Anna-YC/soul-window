@@ -1,0 +1,59 @@
+{
+  "date": "2026-11-07T02:37:59.353Z",
+  "app": "/Applications/心灵之窗护眼助手.app",
+  "version": "0.2.5",
+  "passed": 10,
+  "total": 10,
+  "results": [
+    {
+      "name": "清空休息时长不会覆盖有效设置",
+      "ok": true,
+      "detail": "5 → 5"
+    },
+    {
+      "name": "直接提交 NaN 被回退为安全默认值",
+      "ok": true,
+      "detail": "实际=5"
+    },
+    {
+      "name": "Infinity 被回退且提醒/强制阈值均为有限数",
+      "ok": true,
+      "detail": "{\"reminder\":30,\"forced\":40,\"rest\":5}"
+    },
+    {
+      "name": "休息倒计时为有限时间",
+      "ok": true,
+      "detail": "00:08"
+    },
+    {
+      "name": "首次雨声 master 连接到输出",
+      "ok": true,
+      "detail": "{\"destinationConnected\":true,\"disconnected\":false}"
+    },
+    {
+      "name": "静音后旧 master 被独立清理",
+      "ok": true,
+      "detail": "{\"destinationConnected\":true,\"disconnected\":true}"
+    },
+    {
+      "name": "停止后重开使用新的可用 master",
+      "ok": true,
+      "detail": "{\"destinationConnected\":true,\"disconnected\":false}"
+    },
+    {
+      "name": "切换溪流后旧雨声链被清理",
+      "ok": true,
+      "detail": "{\"destinationConnected\":true,\"disconnected\":true}"
+    },
+    {
+      "name": "旧清理不会切断新溪流",
+      "ok": true,
+      "detail": "{\"destinationConnected\":true,\"disconnected\":false}"
+    },
+    {
+      "name": "界面状态与实际溪流链一致",
+      "ok": true,
+      "detail": ""
+    }
+  ]
+}

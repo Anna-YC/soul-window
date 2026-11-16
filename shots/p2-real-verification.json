@@ -1,0 +1,68 @@
+{
+  "date": "2026-11-07T03:55:52.463Z",
+  "version": "0.2.6",
+  "passed": 12,
+  "total": 12,
+  "results": [
+    {
+      "name": "关闭自动训练仍显示可选训练提示",
+      "ok": true,
+      "detail": "选一个练习陪这段时间，或什么都不做"
+    },
+    {
+      "name": "关闭自动训练后背景声栏正常初始化",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "第一次 auto 休息使用当前轮换项",
+      "ok": true,
+      "detail": "index=0 label=第 1 轮 · 看向窗外或最远的地方"
+    },
+    {
+      "name": "休息结束后主进程推进轮换索引",
+      "ok": true,
+      "detail": "0 → 1"
+    },
+    {
+      "name": "第二次 auto 休息使用下一项",
+      "ok": true,
+      "detail": "index=1 label=目光跟着光点慢慢走"
+    },
+    {
+      "name": "短时长提醒出现",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "关闭提醒立即退出延后状态",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "延后到点不再重新提醒",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "强制阈值调低后提醒阈值联动为 20",
+      "ok": true,
+      "detail": "settings=20 input=20"
+    },
+    {
+      "name": "强制阈值调回后面板仍显示真实值 20（不虚报 30）",
+      "ok": true,
+      "detail": "settings=20 input=20"
+    },
+    {
+      "name": "崩溃重建后设置面板成功打开",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "崩溃重建没有产生重复主窗口或丢失引用",
+      "ok": true,
+      "detail": "主窗口数=1"
+    }
+  ]
+}

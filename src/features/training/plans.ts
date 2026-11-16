@@ -39,10 +39,10 @@ export function buildBlinkPlan(blinks = 6, closedSeconds = 2, openSeconds = 2): 
   return phases;
 }
 
-/** 呼吸引导：吸 4s → 保持 4s → 呼 6s（14s/轮），默认轮数按休息时长收敛 */
+/** 呼吸引导：吸 4s → 保持 4s → 呼 6s（14s/轮），轮数按休息时长收敛 */
 export function buildBreathingPlan(cycles = 8, inSec = 4, holdSec = 4, outSec = 6): TrainingPhase[] {
   const phases: TrainingPhase[] = [];
-  for (let i = 1; i <= clampInt(cycles, 3, 20); i++) {
+  for (let i = 1; i <= clampInt(cycles, 1, 20); i++) {
     phases.push({ kind: 'breathe-in', label: `第 ${i} 轮 · 缓缓吸气`, durationSeconds: inSec });
     phases.push({ kind: 'breathe-hold', label: `第 ${i} 轮 · 轻轻保持`, durationSeconds: holdSec });
     phases.push({ kind: 'breathe-out', label: `第 ${i} 轮 · 慢慢呼气`, durationSeconds: outSec });
@@ -66,25 +66,43 @@ export function buildFarPointGame(rounds = 1): TrainingPhase[] {
 
 export type FixedTrainingMode = 'far-near' | 'tracking' | 'blink' | 'breathing';
 
-/** 按设置生成休息期间的活动序列；auto = 远近 → 追踪 → 眨眼 → 呼吸 轮换（各接一轮寻找远点） */
+export const AUTO_TRAINING_ROTATION: readonly FixedTrainingMode[] = ['far-near', 'tracking', 'blink', 'breathing'];
+
+/** 主进程在每次休息结束后推进；索引跨休息窗口持久，避免 auto 永远停在第一项 */
+export function nextAutoRotationIndex(current: number): number {
+  return (current + 1) % AUTO_TRAINING_ROTATION.length;
+}
+
+/** 按设置生成休息期间的活动序列；所有模式的总时长都不超过本次休息预算 */
 export function buildRestActivities(
   mode: FixedTrainingMode | 'auto',
   restSeconds: number,
   autoRotationIndex = 0,
 ): { title: string; phases: TrainingPhase[] } {
-  const restMin = restSeconds / 60;
-  if (mode === 'far-near') return { title: '远近切换', phases: buildFarNearPlan(restMin >= 4 ? 3 : 2) };
-  if (mode === 'blink') return { title: '眨眼练习', phases: buildBlinkPlan(6) };
-  if (mode === 'tracking') return { title: '缓慢追踪', phases: buildTrackingPlan(Math.min(90, restSeconds - 30)) };
-  if (mode === 'breathing') {
-    const cycles = Math.max(3, Math.min(10, Math.floor((restSeconds - 60) / 14)));
-    return { title: '呼吸引导', phases: buildBreathingPlan(cycles) };
-  }
-  // auto：按本次休息在轮换表中的位置取下一项，后接寻找远点小游戏
-  const rotation: FixedTrainingMode[] = ['far-near', 'tracking', 'blink', 'breathing'];
-  const pick = rotation[autoRotationIndex % rotation.length];
-  const first = buildRestActivities(pick, restSeconds);
+  const budget = Math.max(1, Math.floor(restSeconds));
+  if (mode !== 'auto') return buildFixedActivity(mode, budget);
+
+  const pick = AUTO_TRAINING_ROTATION[autoRotationIndex % AUTO_TRAINING_ROTATION.length];
+  // 不足 90 秒时不强行塞入小游戏，避免训练被休息结束截断
+  if (budget < 90) return buildFixedActivity(pick, budget);
+
+  // 预留 45 秒寻找远点，训练在剩余预算内收敛
+  const first = buildFixedActivity(pick, budget - 45);
   return { title: `${first.title} + 寻找远点`, phases: [...first.phases, ...buildFarPointGame(1)] };
+}
+
+function buildFixedActivity(mode: FixedTrainingMode, budget: number): { title: string; phases: TrainingPhase[] } {
+  if (mode === 'far-near') {
+    return { title: '远近切换', phases: buildFarNearPlan(Math.min(3, Math.max(1, Math.floor(budget / 30)))) };
+  }
+  if (mode === 'blink') {
+    return { title: '眨眼练习', phases: buildBlinkPlan(Math.min(8, Math.max(3, Math.floor(budget / 4)))) };
+  }
+  if (mode === 'tracking') {
+    return { title: '缓慢追踪', phases: buildTrackingPlan(Math.min(90, budget)) };
+  }
+  const cycles = Math.min(10, Math.max(1, Math.floor(budget / 14)));
+  return { title: '呼吸引导', phases: buildBreathingPlan(cycles) };
 }
 
 function clampInt(n: number, min: number, max: number): number {

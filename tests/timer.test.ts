@@ -306,6 +306,28 @@ describe('开关与统计', () => {
     expect(m.getState()).toBe('working');
   });
 
+  it('延后期间关闭定时提醒，立即回到工作且到点不再提醒', () => {
+    const { m, jump } = makeMachine(0, { reminderSeconds: 10, forcedAfterSeconds: 60, snoozeSeconds: 5 });
+    m.dispatch({ type: 'start' });
+    jump(10);
+    m.dispatch({ type: 'snooze' });
+    expect(m.getState()).toBe('extended');
+    m.updateConfig({ reminderEnabled: false });
+    expect(m.getState()).toBe('working');
+    const events = jump(5);
+    expect(m.getState()).toBe('working');
+    expect(events.filter((e) => e.type === 'reminder-show')).toHaveLength(0);
+  });
+
+  it('提醒卡显示期间关闭定时提醒，卡片对应状态立即结束', () => {
+    const { m, jump } = makeMachine(0, { reminderSeconds: 10, forcedAfterSeconds: 60 });
+    m.dispatch({ type: 'start' });
+    jump(10);
+    expect(m.getState()).toBe('reminder30');
+    m.updateConfig({ reminderEnabled: false });
+    expect(m.getState()).toBe('working');
+  });
+
   it('监听器（而非仅返回值）能收到 advance 触发的语义事件（回归：休息窗口不开的根因）', () => {
     const { m, jump } = makeMachine(0, { reminderSeconds: 10, forcedAfterSeconds: 15, restSeconds: 6 });
     const seen: string[] = [];

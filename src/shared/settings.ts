@@ -45,18 +45,31 @@ export const DEFAULT_SETTINGS: UserSettings = {
   showDesktopClock: true,
 };
 
-/** 设置写入前的校验与收敛：范围钳制、提醒阈值不得大于强制阈值 */
+/** 设置写入前的校验与收敛：非有限数回退默认值、范围钳制、提醒阈值不得大于强制阈值 */
 export function sanitizeSettings(raw: Partial<UserSettings>): UserSettings {
   const s = { ...DEFAULT_SETTINGS, ...raw };
-  s.reminderMinutes = clamp(round(s.reminderMinutes, 5), 5, 120);
-  s.forcedRestAfterMinutes = clamp(round(s.forcedRestAfterMinutes, 5), 10, 180);
-  s.forcedRestDurationMinutes = clamp(round(s.forcedRestDurationMinutes, 1), 1, 30);
+  s.reminderMinutes = clamp(round(finiteOrDefault(s.reminderMinutes, DEFAULT_SETTINGS.reminderMinutes), 5), 5, 120);
+  s.forcedRestAfterMinutes = clamp(
+    round(finiteOrDefault(s.forcedRestAfterMinutes, DEFAULT_SETTINGS.forcedRestAfterMinutes), 5),
+    10,
+    180,
+  );
+  s.forcedRestDurationMinutes = clamp(
+    round(finiteOrDefault(s.forcedRestDurationMinutes, DEFAULT_SETTINGS.forcedRestDurationMinutes), 1),
+    1,
+    30,
+  );
   if (s.reminderMinutes > s.forcedRestAfterMinutes) s.reminderMinutes = s.forcedRestAfterMinutes;
   s.trainingMode = (['auto', 'far-near', 'tracking', 'blink', 'breathing'] as const).includes(s.trainingMode)
     ? s.trainingMode
     : 'auto';
   s.showDesktopClock = typeof s.showDesktopClock === 'boolean' ? s.showDesktopClock : true;
   return s;
+}
+
+/** undefined / null / NaN / Infinity / 非数字类型都不能进入计时配置 */
+function finiteOrDefault(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
 
 function round(n: number, step: number): number {
@@ -75,10 +88,12 @@ export interface DailyStats {
   longestWorkSessionSeconds: number;
 }
 
-/** 广播给全部窗口的应用快照：计时器状态 + 生效设置 */
+/** 广播给全部窗口的应用快照：计时器状态 + 生效设置 + 主进程持有的休息轮换索引 */
 export interface AppSnapshot {
   timer: import('../features/timer/types').TimerSnapshot;
   settings: UserSettings;
+  /** auto 训练的轮换位置；由主进程跨休息窗口保存 */
+  restRotationIndex: number;
 }
 
 export const IPC = {

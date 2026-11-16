@@ -64,9 +64,9 @@ export class TrayController {
             ? 'tray-reminder.png'
             : 'tray-working.png';
     // 44×44 生成图，缩到 22 显示（高分屏依然锐利）
-    // 开发模式：app.getAppPath() = 项目根目录
-    // 打包后：extraResources 放在 Resources/，不在 asar 内
-    const base = process.resourcesPath ?? app.getAppPath();
+    // 开发时 process.resourcesPath 指向 Electron 自带目录，必须用项目根目录；
+    // 打包后 extraResources 位于应用 Resources/assets。
+    const base = app.isPackaged ? process.resourcesPath : app.getAppPath();
     const img = nativeImage.createFromPath(join(base, 'assets', 'icons', file));
     return img.isEmpty() ? img : img.resize({ width: 22, height: 22 });
   }

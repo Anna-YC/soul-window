@@ -198,7 +198,9 @@ export function mountMainApp(root: HTMLElement): void {
     }
     refs.extendedNote.hidden = t.state !== 'extended';
     if (t.state === 'extended') {
-      refs.extendedNote.textContent = `提醒已延后，工作满 ${s.forcedRestAfterMinutes} 分钟将进入 ${s.forcedRestDurationMinutes} 分钟强制休息。`;
+      refs.extendedNote.textContent = s.forcedRestEnabled
+        ? `提醒已延后，工作满 ${s.forcedRestAfterMinutes} 分钟将进入 ${s.forcedRestDurationMinutes} 分钟强制休息。`
+        : '提醒已延后，5 分钟后会再次提醒你休息。';
     }
 
     // 主操作区

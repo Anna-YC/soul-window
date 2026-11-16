@@ -8,6 +8,7 @@ import {
   buildFarPointGame,
   buildRestActivities,
   buildTrackingPlan,
+  nextAutoRotationIndex,
 } from '../src/features/training/plans';
 
 function simulateDay() {
@@ -132,8 +133,20 @@ describe('休息活动计划', () => {
     expect(a0.title).not.toBe(a1.title); // 轮换
     expect(a3.title).toContain('呼吸引导');
     expect(fixed.title).toBe('远近切换');
-    // auto 模式总时长不超过休息时长（留 30s 缓冲）
-    const total = a0.phases.reduce((s, p) => s + p.durationSeconds, 0);
-    expect(total).toBeLessThanOrEqual(300 - 30 + 45); // 追踪计划按 restSeconds-30 封顶
+    expect(nextAutoRotationIndex(0)).toBe(1);
+    expect(nextAutoRotationIndex(3)).toBe(0); // 四次休息后循环
+  });
+
+  it('所有训练与自动轮换的总时长都不超过休息预算（含 1 分钟短休息）', () => {
+    const modes = ['far-near', 'tracking', 'blink', 'breathing', 'auto'] as const;
+    for (const seconds of [30, 60, 90, 300]) {
+      for (const mode of modes) {
+        for (const rotation of [0, 1, 2, 3]) {
+          const plan = buildRestActivities(mode, seconds, rotation);
+          const total = plan.phases.reduce((sum, phase) => sum + phase.durationSeconds, 0);
+          expect(total, `${mode} / rotation=${rotation} / rest=${seconds}s`).toBeLessThanOrEqual(seconds);
+        }
+      }
+    }
   });
 });

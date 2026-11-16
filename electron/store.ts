@@ -1,7 +1,7 @@
 // 本地 JSON 持久化（userData 目录）：设置 + 每日统计。
 // 纯文件读写，无数据库（避开交接文档中 WorkBuddy 的 SQLite 限制，虽然本 Agent 不受影响，但保持轻量）
 import { app } from 'electron';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DEFAULT_SETTINGS, sanitizeSettings, type DailyStats, type UserSettings } from '../src/shared/settings';
 
@@ -32,8 +32,25 @@ export function loadSettings(): UserSettings {
   return raw ? sanitizeSettings(raw) : { ...DEFAULT_SETTINGS };
 }
 
+/** 设置采用临时文件 + 原子替换；失败必须抛出，不能让 UI 误报“已保存” */
+function writeJsonAtomic(file: string, data: unknown): void {
+  const temp = `${file}.tmp`;
+  try {
+    writeFileSync(temp, JSON.stringify(data, null, 2), 'utf8');
+    renameSync(temp, file);
+  } catch (err) {
+    try {
+      unlinkSync(temp);
+    } catch {
+      /* 临时文件可能未创建 */
+    }
+    console.error('[store] 设置写入失败:', file, err);
+    throw err;
+  }
+}
+
 export function saveSettings(settings: UserSettings): void {
-  writeJson(userDataFile('settings.json'), settings);
+  writeJsonAtomic(userDataFile('settings.json'), settings);
 }
 
 /** 昨日统计可能已跨天：交给状态机在首个 advance() 时 rollover */

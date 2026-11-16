@@ -87,6 +87,11 @@ export class TimerMachine {
 
   updateConfig(patch: Partial<TimerConfig>): void {
     this.config = { ...this.config, ...patch };
+    // 热关闭提醒时，当前提醒卡和未到期延后都要立即失效，不能到点再次出现
+    if (patch.reminderEnabled === false && (this.state === 'reminder30' || this.state === 'extended')) {
+      this.snoozeUntilTs = null;
+      this.transition('working');
+    }
   }
 
   getState(): TimerStateName {
@@ -197,7 +202,7 @@ export class TimerMachine {
           this.restActiveSince = now;
           this.emit({ type: 'rest-start', kind: 'forced' });
           this.transition('forcedRest');
-        } else if (this.state === 'extended' && this.snoozeUntilTs !== null && now >= this.snoozeUntilTs) {
+        } else if (this.config.reminderEnabled && this.state === 'extended' && this.snoozeUntilTs !== null && now >= this.snoozeUntilTs) {
           // 延后 5 分钟到期：重新展示提醒
           this.snoozeUntilTs = null;
           this.emit({ type: 'reminder-show', elapsedSeconds: Math.floor(elapsedSec) });

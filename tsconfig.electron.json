@@ -18,6 +18,7 @@
     "electron/**/*.ts",
     "src/shared/**/*.ts",
     "src/features/timer/machine.ts",
-    "src/features/timer/types.ts"
+    "src/features/timer/types.ts",
+    "src/features/training/plans.ts"
   ]
 }
